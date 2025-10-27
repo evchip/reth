@@ -9966,6 +9966,7 @@ dependencies = [
  "reth-rpc-eth-types",
  "reth-rpc-server-types",
  "reth-storage-api",
+ "reth-storage-errors",
  "reth-tasks",
  "reth-testing-utils",
  "reth-transaction-pool",
