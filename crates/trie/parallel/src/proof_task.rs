@@ -979,6 +979,7 @@ where
         let mut trie_cursor_metrics = TrieCursorMetricsCache::default();
         let mut hashed_cursor_metrics = HashedCursorMetricsCache::default();
         let hashed_address = input.hashed_address();
+        let target_count = input.target_count();
         let proof_start = Instant::now();
 
         let result = match &input {
@@ -1046,6 +1047,9 @@ where
 
         #[cfg(feature = "metrics")]
         {
+            self.metrics.record_storage_proof_duration(proof_elapsed);
+            self.metrics.record_storage_proof_targets(target_count);
+
             // Accumulate per-proof metrics into the worker's cache
             let per_proof_cache = ProofTaskCursorMetricsCache {
                 account_trie_cursor: TrieCursorMetricsCache::default(),
@@ -1931,6 +1935,14 @@ impl StorageProofInput {
             Self::Legacy { hashed_address, .. } | Self::V2 { hashed_address, .. } => {
                 *hashed_address
             }
+        }
+    }
+
+    /// Returns the number of proof targets.
+    pub fn target_count(&self) -> usize {
+        match self {
+            Self::Legacy { target_slots, .. } => target_slots.len(),
+            Self::V2 { targets, .. } => targets.len(),
         }
     }
 }

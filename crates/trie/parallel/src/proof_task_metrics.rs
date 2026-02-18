@@ -28,6 +28,10 @@ pub struct ProofTaskTrieMetrics {
     deferred_encoder_sync: Histogram,
     /// Histogram for dispatched storage proofs that fell back to sync due to missing root.
     deferred_encoder_dispatched_missing_root: Histogram,
+    /// Histogram of individual storage proof computation durations in seconds.
+    storage_proof_duration_seconds: Histogram,
+    /// Histogram of the number of targets per storage proof computation.
+    storage_proof_targets_count: Histogram,
 }
 
 impl ProofTaskTrieMetrics {
@@ -49,6 +53,16 @@ impl ProofTaskTrieMetrics {
     /// Record account worker idle time.
     pub fn record_account_worker_idle_time(&self, duration: Duration) {
         self.account_worker_idle_time_seconds.record(duration.as_secs_f64());
+    }
+
+    /// Record a single storage proof computation duration.
+    pub fn record_storage_proof_duration(&self, duration: Duration) {
+        self.storage_proof_duration_seconds.record(duration.as_secs_f64());
+    }
+
+    /// Record the number of targets in a single storage proof computation.
+    pub fn record_storage_proof_targets(&self, count: usize) {
+        self.storage_proof_targets_count.record(count as f64);
     }
 
     /// Record value encoder stats (deferred encoder variant counts).
