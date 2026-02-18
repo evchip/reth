@@ -1466,6 +1466,26 @@ fn get_proof_targets(
             }
         }
 
+        // TEMP INSTRUMENTATION: log state update proof target distribution
+        {
+            let total_storage: usize = targets.storage_targets.values().map(|s| s.len()).sum();
+            let mut per_account: Vec<_> = targets.storage_targets.iter()
+                .map(|(addr, slots)| (*addr, slots.len()))
+                .collect();
+            per_account.sort_by(|a, b| b.1.cmp(&a.1));
+            let top10: Vec<String> = per_account.iter().take(10)
+                .map(|(addr, count)| format!("{:?}={}", addr, count))
+                .collect();
+            tracing::info!(
+                target: "reth::stateupdate::targets",
+                new_accounts = targets.account_targets.len(),
+                total_storage_targets = total_storage,
+                accounts_with_storage = per_account.len(),
+                top10 = %top10.join(", "),
+                "state update proof target distribution"
+            );
+        }
+
         VersionedMultiProofTargets::V2(targets)
     } else {
         let mut targets = MultiProofTargets::default();

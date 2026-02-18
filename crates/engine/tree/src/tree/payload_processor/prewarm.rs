@@ -751,6 +751,8 @@ fn multiproof_targets_v2_from_state(state: EvmState) -> (VersionedMultiProofTarg
 
     let mut targets = MultiProofTargetsV2::default();
     let mut storage_target_count = 0;
+    // TEMP: collect hash→address mapping for instrumentation
+    let mut addr_map: std::collections::HashMap<alloy_primitives::B256, alloy_primitives::Address> = std::collections::HashMap::new();
     for (addr, account) in state {
         // if the account was not touched, or if the account was selfdestructed, do not
         // fetch proofs for it
@@ -764,6 +766,7 @@ fn multiproof_targets_v2_from_state(state: EvmState) -> (VersionedMultiProofTarg
         }
 
         let hashed_address = keccak256(addr);
+        addr_map.insert(hashed_address, addr);
         targets.account_targets.push(hashed_address.into());
 
         let mut storage_slots = Vec::with_capacity(account.storage.len());
@@ -781,6 +784,28 @@ fn multiproof_targets_v2_from_state(state: EvmState) -> (VersionedMultiProofTarg
         if !storage_slots.is_empty() {
             targets.storage_targets.insert(hashed_address, storage_slots);
         }
+    }
+
+    // TEMP INSTRUMENTATION: log per-account storage target distribution
+    {
+        let mut per_account: Vec<_> = targets.storage_targets.iter()
+            .map(|(hashed, slots)| {
+                let orig = addr_map.get(hashed).map(|a| format!("{:?}", a)).unwrap_or_else(|| format!("{:?}", hashed));
+                (orig, slots.len())
+            })
+            .collect();
+        per_account.sort_by(|a, b| b.1.cmp(&a.1));
+        let top10: Vec<String> = per_account.iter().take(10)
+            .map(|(addr, count)| format!("{}={}", addr, count))
+            .collect();
+        tracing::info!(
+            target: "reth::prefetch::targets",
+            total_accounts = targets.account_targets.len(),
+            total_storage_targets = storage_target_count,
+            accounts_with_storage = per_account.len(),
+            top10 = %top10.join(", "),
+            "prefetch proof target distribution"
+        );
     }
 
     (VersionedMultiProofTargets::V2(targets), storage_target_count)
